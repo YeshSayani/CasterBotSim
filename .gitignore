@@ -1,0 +1,32 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# VS Code / editor
+.vscode/
+*.swp
+*.swo
+
+# Gazebo runtime/cache
+.gazebo/
+*.log
+
+# RViz autosave/backups
+*.rviz~
+
+# Large temporary data
+*.bag
+*.db3
+*.mcap
+
+# OS files
+.DS_Store
+Thumbs.db
