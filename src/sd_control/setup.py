@@ -31,6 +31,7 @@ setup(
         'nav2_plan_client = sd_control.nav2_plan_client:main',
         'stanley_controller = sd_control.stanley_controller:main',
         'lqr_controller = sd_control.lqr_controller:main',
+        'mppi_controller = sd_control.mppi_controller:main',
         ],
     },
 )
