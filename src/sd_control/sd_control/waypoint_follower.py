@@ -140,15 +140,19 @@ class WaypointFollower(Node):
         )
 
         self.cmd_pub.publish(cmd)
-
+        
         self.get_logger().info(
-            f"WP {self.current_waypoint_index + 1}/{len(self.waypoints)} | "
-            f"pose=({self.x:.2f}, {self.y:.2f}, {self.yaw:.2f}) | "
-            f"goal=({goal_x:.2f}, {goal_y:.2f}) | "
-            f"dist={distance_error:.2f}, heading_err={heading_error:.2f} | "
-            f"cmd=({cmd.linear.x:.2f}, {cmd.angular.z:.2f})",
+            "\n"
+            "================ Way Point Follower DEBUG ================\n"
+            f"{'Way Point':<18}: {self.current_waypoint_index + 1}/{len(self.waypoints)}\n"
+            f"{'Robot Pose':<18}: x={self.x:>8.2f}, y={self.y:>8.2f}, yaw={self.yaw:>8.2f}\n"
+            f"{'Goal Distance':<18}: x={goal_x:>8.2f}, y={goal_y:>8.2f}\n"
+            f"{'Heading Error':<18}: {heading_error:>8.3f} m\n"
+            f"{'Distance Error':<18}: {distance_error:>8.2f} m\n"
+            f"{'Command':<18}: linear.x={cmd.linear.x:>8.2f}, angular.z={cmd.angular.z:>8.2f}\n"
+            "====================================================\n\n",
             throttle_duration_sec=1.0
-        )
+            )
 
 
 def main(args=None):

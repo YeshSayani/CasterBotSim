@@ -791,8 +791,8 @@ class LQRController(Node):
             f"{'Cross Track Error':<18}: {cross_track_error:>8.3f}\n"
             f"{'K':<18}: {K[0,0]:>8.2f}, {K[0,1]:>8.2f}\n"
             f"{'Goal Distance':<18}: {final_distance:>8.2f}\n"
-            f"{'Command':<18}: {cmd.linear.x:>8.2f}, {cmd.angular.z:>8.2f}\n"
-            f"cmd=({cmd.linear.x:.2f}, {cmd.angular.z:.2f})",
+            f"{'Command':<18}: Linear.x:{cmd.linear.x:>8.2f}, Angular.z:{cmd.angular.z:>8.2f}\n"
+            "====================================================\n\n",
             throttle_duration_sec=1.0
         )
 

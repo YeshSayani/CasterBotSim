@@ -231,7 +231,8 @@ class PurePursuitController(Node):
             f"{'Lookahead point':<18}: x0 = {lookahead_point[0]:>8.2f}, y0 = {lookahead_point[1]:>8.2f}\n"
             f"{'robot_frame':<18}: {x_robot:>8.2f}, {y_robot:>8.2f}\n"
             f"{'Curvature':<18}: {curvature:>8.2f}\n"
-            f"{'Cmd':<18}: Linear = {cmd.linear.x:>8.2f}, Angular = {cmd.angular.z:>8.2f}\n"
+            f"{'Cmd':<18}: Linear.x = {cmd.linear.x:>8.2f}, Angular.z = {cmd.angular.z:>8.2f}\n"
+            "====================================================\n\n",
             throttle_duration_sec=1.0
         )
 

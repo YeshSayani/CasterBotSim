@@ -339,13 +339,16 @@ class StanleyController(Node):
         )
 
         self.get_logger().info(
-            f"idx={closest_index}/{len(self.path)} | "
-            f"pose=({self.x:.2f}, {self.y:.2f}, {self.yaw:.2f}) | "
-            f"path_yaw={path_heading:.2f} | "
-            f"heading_err={heading_error:.2f} | "
-            f"cte={cross_track_error:.3f} m | "
-            f"goal_dist={final_distance:.2f} m | "
-            f"cmd=({cmd.linear.x:.2f}, {cmd.angular.z:.2f})",
+            "\n"
+            "================ Stanley Control DEBUG ================\n"
+            f"{'Path Index':<18}: {closest_index}/{len(self.path)}\n"
+            f"{'Robot Pose':<18}: x={self.x:>8.2f}, y={self.y:>8.2f}, yaw={self.yaw:>8.2f}\n" 
+            f"{'Path Yaw':<18}: {path_heading:>8.2f}\n"
+            f"{'Heading Error':<18}: {heading_error:>8.2f}\n"
+            f"{'Cross Track Error':<18}: {cross_track_error:>8.3f}\n"
+            f"{'Goal Distance':<18}: {final_distance:>8.2f}\n"
+            f"{'Command':<18}: Linear.x:{cmd.linear.x:>8.2f}, Angular.z:{cmd.angular.z:>8.2f}\n"
+            "====================================================\n\n",
             throttle_duration_sec=1.0
         )
 
