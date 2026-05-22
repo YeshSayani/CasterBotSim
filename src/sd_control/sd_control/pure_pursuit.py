@@ -222,14 +222,16 @@ class PurePursuitController(Node):
         )
 
         self.cmd_pub.publish(cmd)
-
+        
         self.get_logger().info(
-            f"pose=({self.x:.2f}, {self.y:.2f}, {self.yaw:.2f}) | "
-            f"lookahead=({lookahead_point[0]:.2f}, {lookahead_point[1]:.2f}) | "
-            f"idx={lookahead_index} | "
-            f"robot_frame=({x_robot:.2f}, {y_robot:.2f}) | "
-            f"curvature={curvature:.2f} | "
-            f"cmd=({cmd.linear.x:.2f}, {cmd.angular.z:.2f})",
+            "\n"
+            "================ Pure Pursuit Control DEBUG ================\n"
+            f"{'Path Index':<18}: {lookahead_index}\n"
+            f"{'Robot Pose':<18}: x={self.x:>8.2f}, y={self.y:>8.2f}, yaw={self.yaw:>8.2f}\n"
+            f"{'Lookahead point':<18}: x0 = {lookahead_point[0]:>8.2f}, y0 = {lookahead_point[1]:>8.2f}\n"
+            f"{'robot_frame':<18}: {x_robot:>8.2f}, {y_robot:>8.2f}\n"
+            f"{'Curvature':<18}: {curvature:>8.2f}\n"
+            f"{'Cmd':<18}: Linear = {cmd.linear.x:>8.2f}, Angular = {cmd.angular.z:>8.2f}\n"
             throttle_duration_sec=1.0
         )
 

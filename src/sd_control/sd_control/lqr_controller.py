@@ -782,13 +782,16 @@ class LQRController(Node):
 
         # Human-readable terminal log.
         self.get_logger().info(
-            f"idx={closest_index}/{len(self.path)} | "
-            f"pose=({self.x:.2f}, {self.y:.2f}, {self.yaw:.2f}) | "
-            f"path_yaw={path_heading:.2f} | "
-            f"heading_err={heading_error:.2f} | "
-            f"cte={cross_track_error:.3f} m | "
-            f"K=({K[0,0]:.2f}, {K[0,1]:.2f}) | "
-            f"goal_dist={final_distance:.2f} m | "
+            "\n"
+            "================ LQR Control DEBUG ================\n"
+            f"{'Path Index':<18}: {closest_index}/{len(self.path)}\n"
+            f"{'Robot Pose':<18}: x={self.x:>8.2f}, y={self.y:>8.2f}, yaw={self.yaw:>8.2f}\n" 
+            f"{'Path Yaw':<18}: {path_heading:>8.2f}\n"
+            f"{'Heading Error':<18}: {heading_error:>8.2f}\n"
+            f"{'Cross Track Error':<18}: {cross_track_error:>8.3f}\n"
+            f"{'K':<18}: {K[0,0]:>8.2f}, {K[0,1]:>8.2f}\n"
+            f"{'Goal Distance':<18}: {final_distance:>8.2f}\n"
+            f"{'Command':<18}: {cmd.linear.x:>8.2f}, {cmd.angular.z:>8.2f}\n"
             f"cmd=({cmd.linear.x:.2f}, {cmd.angular.z:.2f})",
             throttle_duration_sec=1.0
         )
