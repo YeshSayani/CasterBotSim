@@ -687,6 +687,45 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /stanley_path
       Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: MPC_Closest_Point
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /mpc_closest_point
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: MPC_Path
+      Namespaces:
+        mpc_path: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /mpc_path
+      Value: true
+    - Class: rviz_default_plugins/Marker
+      Enabled: true
+      Name: MPC_Prediction_Marker
+      Namespaces:
+        {}
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /mpc_prediction
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
