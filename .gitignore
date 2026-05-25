@@ -30,3 +30,4 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+~/self_drive_ws/src/sd_robot/worlds/downloaded_warehouse.world

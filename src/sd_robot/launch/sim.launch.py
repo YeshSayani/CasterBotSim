@@ -1,7 +1,7 @@
 import os
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable
 from launch.substitutions import Command
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -13,17 +13,32 @@ def generate_launch_description():
     package_name = "sd_robot"
 
     pkg_share = get_package_share_directory(package_name)
+    models_path = os.path.join(pkg_share, "models")
+
+    set_gazebo_model_path = SetEnvironmentVariable(
+        name="GAZEBO_MODEL_PATH",
+        value=[
+            models_path,
+            ":",
+            os.environ.get("GAZEBO_MODEL_PATH", "")
+        ]
+    )
 
     robot_description_path = os.path.join(
         pkg_share,
         "urdf",
         "simple_robot.urdf.xacro"
     )
-
+    
+    #world_file = "test_arena.world"
+    #world_file = "asymmetric_world.world"
+    world_file = "warehouse_world.world"
+    #world_file = "downloaded_warehouse.world"
+    
     world_path = os.path.join(
         pkg_share,
         "worlds",
-        "asymmetric_world.world"
+        world_file
     )
 
     gazebo_launch = os.path.join(
@@ -67,6 +82,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        set_gazebo_model_path,
         gazebo_node,
         robot_state_publisher_node,
         spawn_robot_node
