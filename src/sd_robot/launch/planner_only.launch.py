@@ -14,7 +14,7 @@ def generate_launch_description():
         "nav2_params.yaml"
     )
 
-    map_file = "/home/yeshwanth/self_drive_ws/maps/asymmetric_world_map.yaml"
+    map_file = "/home/yeshwanth/self_drive_ws/maps/warehouse_world_map.yaml"
 
     map_server_node = Node(
         package="nav2_map_server",
