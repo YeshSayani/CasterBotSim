@@ -1,64 +1,67 @@
-<?xml version="1.0"?>
+<?xml version="1.0"?> # Indicates the XML format
+
+# Starts the robot definition
+# Defines the name
+# xmlns:xacro="http://www.ros.org/wiki/xacro" Enables the Xacro syntax, without this the file would be plain URDF
 <robot name="simple_sd_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <!-- ========================= -->
   <!-- Robot Dimensions -->
   <!-- ========================= -->
 
-  <xacro:property name="base_length" value="0.45"/>
-  <xacro:property name="base_width"  value="0.32"/>
-  <xacro:property name="base_height" value="0.12"/>
+  <xacro:property name="base_length" value="0.45"/> # Main robot body length
+  <xacro:property name="base_width"  value="0.32"/> # Main robot body width
+  <xacro:property name="base_height" value="0.12"/> # Main robot body height
 
-  <!-- Rear drive wheels -->
+  <!-- Rear drive wheels dimensions and positions -->
   <xacro:property name="wheel_radius" value="0.07"/>
   <xacro:property name="wheel_width"  value="0.04"/>
-  <xacro:property name="wheel_x"      value="-0.08"/>
-  <xacro:property name="wheel_y"      value="0.19"/>
-  <xacro:property name="wheel_z"      value="-0.03"/>
+  <xacro:property name="wheel_x"      value="-0.08"/> # Wheels are behind the center of the base link
+  <xacro:property name="wheel_y"      value="0.19"/>  # Left Wheel at postive y and right wheel at negative y 
+  <xacro:property name="wheel_z"      value="-0.03"/> # Wheels below center of base link 
 
-  <!-- Front caster wheel -->
+  <!-- Front caster wheel dimensions and positions -->
   <xacro:property name="caster_radius" value="0.035"/>
-  <xacro:property name="caster_x"      value="0.18"/>
-  <xacro:property name="caster_z"      value="-0.065"/>
+  <xacro:property name="caster_x"      value="0.18"/> # Caster wheel placed forward of robot center
+  <xacro:property name="caster_z"      value="-0.065"/> # Caster wheel placed below the base center
 
   <!-- ========================= -->
   <!-- Base Footprint -->
   <!-- ========================= -->
 
-  <link name="base_footprint"/>
+  <link name="base_footprint"/> # Base_footprint is a reference frame, represents robots position projected onto the ground
 
-  <joint name="base_footprint_joint" type="fixed">
-    <parent link="base_footprint"/>
-    <child link="base_link"/>
-    <origin xyz="0 0 0.10" rpy="0 0 0"/>
+  <joint name="base_footprint_joint" type="fixed"> # Fixed joint means the child link does not move relative to the parent link
+    <child link="base_link"/> # base_footprint is the parent link, base_link is the child link
+    <origin xyz="0 0 0.10" rpy="0 0 0"/> # base_link is 0.10 m above the parent link (base_footprint)
   </joint>
 
   <!-- ========================= -->
   <!-- Base Link -->
   <!-- ========================= -->
 
-  <link name="base_link">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+  <link name="base_link"> # The main body coordinate frame
+    <visual> # Visual Box
+      <origin xyz="0 0 0" rpy="0 0 0"/> # Visual box is centered on the base_link frame.
       <geometry>
-        <box size="${base_length} ${base_width} ${base_height}"/>
+        <box size="${base_length} ${base_width} ${base_height}"/> # Creates a rectangular box. The Xacros are defined earlier in the file.
       </geometry>
       <material name="blue">
-        <color rgba="0.1 0.3 0.9 1"/>
+        <color rgba="0.1 0.3 0.9 1"/> # RGBA format, A (alpha is transparency)
       </material>
     </visual>
 
-    <collision>
+    <collision> # Defines the collision shape of the robot, used by the physics side of the simulation 
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <box size="${base_length} ${base_width} ${base_height}"/>
+        <box size="${base_length} ${base_width} ${base_height}"/> # Same dimensions as the robot
       </geometry>
     </collision>
 
-    <inertial>
+    <inertial> # Defines mass and inertia
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <mass value="5.0"/>
-      <inertia
+      <inertia # Inertia matrix, defines how hard it is rotate the body about each axis. 
         ixx="0.05" ixy="0.0" ixz="0.0"
         iyy="0.05" iyz="0.0"
         izz="0.08"/>
@@ -69,44 +72,44 @@
   <!-- Left Rear Drive Wheel -->
   <!-- ========================= -->
 
-  <link name="left_wheel_link">
+  <link name="left_wheel_link"> # Defines left wheel as a seperate link, since it rotates
     <visual>
-      <origin xyz="0 0 0" rpy="1.5708 0 0"/>
-      <geometry>
-        <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
+      <origin xyz="0 0 0" rpy="1.5708 0 0"/> # Wheel visual at the origin of the wheel frame. 
+      <geometry> # The cylinder is also rotated about the x axis by 90 deg - it is aligned along y axis initially, now rotated to align along z axis.
+        <cylinder radius="${wheel_radius}" length="${wheel_width}"/> # Xacro expression that defines wheel dimensions
       </geometry>
-      <material name="black">
+      <material name="black"> # Black Wheels
         <color rgba="0.01 0.01 0.01 1"/>
       </material>
     </visual>
 
-    <collision>
+    <collision> # Collision geometry to match visual geometry
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
       <geometry>
         <cylinder radius="${wheel_radius}" length="${wheel_width}"/>
       </geometry>
     </collision>
-
-    <inertial>
+ 
+    <inertial> # Wheel intertia and mass definitions
       <mass value="0.5"/>
       <inertia
-        ixx="0.001" ixy="0.0" ixz="0.0"
+        ixx="0.001" ixy="0.0" ixz="0.0" # rotational inertias are approximated at 0.001, need to calculate wheel inertia based on mass, r and w for accurate simulation.
         iyy="0.001" iyz="0.0"
         izz="0.001"/>
     </inertial>
   </link>
 
-  <joint name="left_wheel_joint" type="continuous">
-    <parent link="base_link"/>
-    <child link="left_wheel_link"/>
-    <origin xyz="${wheel_x} ${wheel_y} ${wheel_z}" rpy="0 0 0"/>
-    <axis xyz="0 1 0"/>
+  <joint name="left_wheel_joint" type="continuous"> # Defines Joint connecting left wheel to the base, continuous means there's no angle limits on rotation
+    <parent link="base_link"/> # Left wheel link is the child link to the base_link (parent_link)
+    <child link="left_wheel_link"/> # Wheel link is attached to the base link
+    <origin xyz="${wheel_x} ${wheel_y} ${wheel_z}" rpy="0 0 0"/> # Left wheel position relative to the base_link
+    <axis xyz="0 1 0"/> # Wheel rotates around y-axis
   </joint>
 
   <!-- ========================= -->
   <!-- Right Rear Drive Wheel -->
   <!-- ========================= -->
-
+## Right wheel link is identical to the left, except negative values in the y axis, so it places it on the right
   <link name="right_wheel_link">
     <visual>
       <origin xyz="0 0 0" rpy="1.5708 0 0"/>
@@ -144,12 +147,12 @@
   <!-- ========================= -->
   <!-- Front Caster Wheel -->
   <!-- ========================= -->
-
+## Defining the caster wheel
   <link name="caster_link">
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="${caster_radius}"/>
+        <sphere radius="${caster_radius}"/> # Caster is modeled as a sphere
       </geometry>
       <material name="gray">
         <color rgba="0.4 0.4 0.4 1"/>
@@ -172,9 +175,9 @@
     </inertial>
   </link>
 
-  <joint name="caster_joint" type="fixed">
+  <joint name="caster_joint" type="fixed"> # Defines the caster is a fixed sphere 
     <parent link="base_link"/>
-    <child link="caster_link"/>
+    <child link="caster_link"/> # Caster link is the child link to the parent, base_link
     <origin xyz="${caster_x} 0 ${caster_z}" rpy="0 0 0"/>
   </joint>
 
@@ -209,7 +212,7 @@
     </inertial>
   </link>
 
-  <joint name="lidar_joint" type="fixed">
+  <joint name="lidar_joint" type="fixed"> #The lidar is fixed to the base. It does not move relative to the robot body.
     <parent link="base_link"/>
     <child link="lidar_link"/>
     <origin xyz="0.10 0 0.10" rpy="0 0 0"/>
@@ -219,8 +222,8 @@
   <!-- Gazebo Visual Materials -->
   <!-- ========================= -->
 
-  <gazebo reference="base_link">
-    <material>Gazebo/Blue</material>
+  <gazebo reference="base_link"> # Gives Gazebo specific material styling to, in this case base_link
+    <material>Gazebo/Blue</material> # URDF material affects general robot visualization, Gazebo material block affects how Gazebo renders the model
   </gazebo>
 
   <gazebo reference="left_wheel_link">
@@ -244,31 +247,31 @@
   <!-- ========================= -->
 
   <gazebo>
-    <plugin name="diff_drive_controller" filename="libgazebo_ros_diff_drive.so">
-
-      <ros>
-        <namespace>/</namespace>
+    <plugin name="diff_drive_controller" filename="libgazebo_ros_diff_drive.so"> # Loads Gazebo-ROS differential drive plugin. 
+    # Makes the robot behave like a differential drive robot, listens to velocity commands and moves the wheels.
+      <ros> # Puts the plugin in the root namespace
+        <namespace>/</namespace> # The topics apprear as, for example, /cmd_vel instead of say, /sd_robot/cmd_vel, etc. 
       </ros>
 
-      <left_joint>left_wheel_joint</left_joint>
-      <right_joint>right_wheel_joint</right_joint>
+      <left_joint>left_wheel_joint</left_joint> # Indicates to the plugin which joints drive the wheels.
+      <right_joint>right_wheel_joint</right_joint> # Robot will not move if the names are wrong
 
-      <wheel_separation>0.38</wheel_separation>
-      <wheel_diameter>0.14</wheel_diameter>
+      <wheel_separation>0.38</wheel_separation> # Tells the plugin the seperation/distance between R/L wheels.
+      <wheel_diameter>0.14</wheel_diameter> # Wheel diameter - if values are off, the odometry will be off. 
+ 
+      <max_wheel_torque>20</max_wheel_torque> # Upper limit on the wheel torque
+      <max_wheel_acceleration>2.0</max_wheel_acceleration> # Upper limit on the acceleration. 
 
-      <max_wheel_torque>20</max_wheel_torque>
-      <max_wheel_acceleration>2.0</max_wheel_acceleration>
+      <command_topic>cmd_vel</command_topic> # Tells the plugin which topic to listen to.
+      <odometry_topic>odom</odometry_topic> #  Tells the plugin to publish odometry on the /odom topic. 
+      <odometry_frame>odom</odometry_frame> # Odometry frame is called odom.
+      <robot_base_frame>base_footprint</robot_base_frame> # Odometry is published for the robot frame. 
 
-      <command_topic>cmd_vel</command_topic>
-      <odometry_topic>odom</odometry_topic>
-      <odometry_frame>odom</odometry_frame>
-      <robot_base_frame>base_footprint</robot_base_frame>
+      <publish_odom>true</publish_odom> # Means the plugin publishes /odom messages
+      <publish_odom_tf>true</publish_odom_tf> # Plugin publishes the TF transform 
+      <publish_wheel_tf>true</publish_wheel_tf> # Plugin publishes wheel transforms
 
-      <publish_odom>true</publish_odom>
-      <publish_odom_tf>true</publish_odom_tf>
-      <publish_wheel_tf>true</publish_wheel_tf>
-
-      <update_rate>50</update_rate>
+      <update_rate>50</update_rate> # Updates at a rate of 50 Hz (50 times a second).
     </plugin>
   </gazebo>
 
@@ -276,38 +279,38 @@
   <!-- Gazebo Lidar Sensor -->
   <!-- ========================= -->
 
-  <gazebo reference="lidar_link">
-    <sensor name="lidar_sensor" type="ray">
-      <always_on>true</always_on>
-      <visualize>false</visualize>
-      <update_rate>10</update_rate>
+  <gazebo reference="lidar_link"> # Attaches Gazebo specific sensor to lidar link, Lidar sensor moves with the robot. 
+    <sensor name="lidar_sensor" type="ray"> # Creates a ray sensor - how Gazebo simulates LiDAR.
+      <always_on>true</always_on> # LiDAR always stays active
+      <visualize>false</visualize> # Gazebo does not visualize the rays, can clutter view if set to true
+      <update_rate>10</update_rate> # Updates at a rate of 10 Hz, or 10 times (scans) a second. 
 
       <ray>
         <scan>
           <horizontal>
-            <samples>360</samples>
-            <resolution>1</resolution>
-            <min_angle>-3.14159</min_angle>
-            <max_angle>3.14159</max_angle>
+            <samples>360</samples> # Creates 360 LiDAR rays per scan. Scan goes from -pi to pi, meaning 1 ray per degree. 
+            <resolution>1</resolution> # Each sample produces one ray
+            <min_angle>-3.14159</min_angle> # Min Angle from -pi radians or -180 degrees.
+            <max_angle>3.14159</max_angle> # Max Angle to pi radians or 180 degrees, giving a 360 degree field of view. 
           </horizontal>
         </scan>
 
         <range>
-          <min>0.12</min>
-          <max>8.0</max>
-          <resolution>0.01</resolution>
+          <min>0.12</min> # Minimum readable distance at 0.12 m or 12 cm
+          <max>8.0</max> # Maximum readable distance at 8.0 m
+          <resolution>0.01</resolution> # Range resolution at 0.01 m or 1 cm. 
         </range>
       </ray>
 
-      <plugin name="gazebo_ros_laser" filename="libgazebo_ros_ray_sensor.so">
-        <ros>
-          <namespace>/</namespace>
-          <remapping>~/out:=scan</remapping>
-        </ros>
-        <output_type>sensor_msgs/LaserScan</output_type>
-        <frame_name>lidar_link</frame_name>
-      </plugin>
+      <plugin name="gazebo_ros_laser" filename="libgazebo_ros_ray_sensor.so"> # Loads the Gazebo ROS ray sensor plugin 
+        <ros> # Gazebo simulates the ray sensor, the plugin converts Gazebo sensor data into ROS2 messages 
+          <namespace>/</namespace> # Publishes the LiDAR output to /scan.
+          <remapping>~/out:=scan</remapping> # Taking the plugin's default topic and remapping to /scan, namespace is '/', so final topic is /scan
+        </ros> 
+        <output_type>sensor_msgs/LaserScan</output_type> # Defines the output message type is sensor_msgs/msg/LaserScan, the standard message type used by 2D LiDARs
+        <frame_name>lidar_link</frame_name> # Says the LaserScan data is reported in the frame lidar_link
+      </plugin> # Each scan message has the header.frame_id = lidar_link 
     </sensor>
   </gazebo>
 
-</robot>
+</robot> # Ends the robot definition
