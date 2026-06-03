@@ -60,18 +60,20 @@ def generate_launch_description():
     world_file = "warehouse_world.world"
     #world_file = "downloaded_warehouse.world"
     
+## Builds the full path to the world file. 
     world_path = os.path.join(
         pkg_share,
         "worlds",
         world_file
     )
 
+##  Finding Gazebo's launch file 
     gazebo_launch = os.path.join(
-        get_package_share_directory("gazebo_ros"),
+        get_package_share_directory("gazebo_ros"), # Finds the installed share directory for the gazebo_ros package.
         "launch",
-        "gazebo.launch.py"
+        "gazebo.launch.py" # Creates /opt/ros/humble/share/gazebo_ros/launch/gazebo.launch.py,the official Gazebo ROS launch file.
     )
-
+# Run xacro on simple_robot.urdf.xacro, and store the resulting URDF XML string inside the parameter called robot_description (ROS tools expect the robot model to be available under this parameter name:).
     robot_description = {
         "robot_description": Command([
             "xacro ",
@@ -79,24 +81,40 @@ def generate_launch_description():
         ])
     }
 
+## Starts the Robot publisher node that takes the URDF as a paramenter 
+## Robot state publisher reads your robot URDF and publishes TF transforms between robot links.
+## For example, your URDF may define:
+## base_footprint → base_link
+## base_link → left_wheel_link 
+## base_link → right_wheel_link
+## base_link → lidar_link
+## Robot_state_publisher publishes those relationships to /tf and /tf_static.
+## This is how RViz can understand where the robot body, wheels, and sensors are located.
+## robot_state_publisher does not move the robot in Gazebo.
+## It publishes the robot’s link transforms based on the URDF and joint states.
+ 
     robot_state_publisher_node = Node(
-        package="robot_state_publisher",
-        executable="robot_state_publisher",
-        parameters=[robot_description],
-        output="screen"
+        package="robot_state_publisher", # Package name
+        executable="robot_state_publisher", # Executable name
+        parameters=[robot_description], # Robot URDF is passed as parameter to the node
+        output="screen" # Outputs Node's logs to the screen
     )
 
-    gazebo_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(gazebo_launch),
-        launch_arguments={
-            "world": world_path
-        }.items()
+## Including Gazebo's launch   
+
+    gazebo_node = IncludeLaunchDescription( # IncludeLaunchDescription instructs to include another launch file, gazebo_launch /opt/ros/humble/share/gazebo_ros/launch/gazebo.launch.py
+        PythonLaunchDescriptionSource(gazebo_launch), # The launch file being included is a python launch file
+        launch_arguments={ # the path to the required world is passed as an argument to the Gazebo's launch file
+            "world": world_path # World argument tells which world file to open
+        }.items() # The .items() converts the dictionary in to the format expected by IncludeLaunchDescription
     )
 
-    spawn_robot_node = Node(
-        package="gazebo_ros",
-        executable="spawn_entity.py",
-        arguments=[
+## Spawning the Robot in Gazebo. This starts Gazebo’s robot spawning script.
+
+    spawn_robot_node = Node( # Starts spawn_robot_node
+        package="gazebo_ros", # Package name
+        executable="spawn_entity.py", # Executable name, This script reads a robot model and inserts it into the Gazebo simulation.
+        arguments=[ 
           "-topic", "robot_description",
           "-entity", "simple_sd_robot",
           "-x", "0.0",
