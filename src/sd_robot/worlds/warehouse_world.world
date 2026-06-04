@@ -1,8 +1,10 @@
-<?xml version="1.0" ?>
-<sdf version="1.6">
-  <world name="warehouse_world">
+<?xml version="1.0" ?> <!-- This line says the file is XML. Gazebo world files are XML-based. -->
+<sdf version="1.6"> <!-- starts the SDF document. SDF means Simulation Description Format. URDF/Xacro describes the robot.
+SDF describes the Gazebo simulation world.-->
+<!--This File defines the Gazebo environment your robot drives in -->
+  <world name="warehouse_world"> <!-- This creates a Gazebo world named warehouse_world -->
 
-    <include>
+    <include> <!-- includes Gazebo’s built-in sun model. It gives the world default lighting.-->
       <uri>model://sun</uri>
     </include>
 
