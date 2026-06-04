@@ -1,23 +1,28 @@
-<?xml version="1.0"?>
+<?xml version="1.0"?> <!-- Says file is in XML, ROS package manifests are in XML -->
+<!-- Points XML tools/editors to the ROS package format 3 schema. It helps editors validate that your package.xml has the right structure.-->
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="3">
+<!-- Package manifest for the controller package -->
+<package format="3"> <!-- means this uses ROS package format version 3. -->
   <name>sd_control</name>
   <version>0.0.0</version>
   <description>TODO: Package description</description>
   <maintainer email="yeshwanthsayani9@gmail.com">yeshwanth</maintainer>
-  <license>TODO: License declaration</license>
+  <license> Apache-2.0 </license> <!-- Delete if issues arise -->
+  <!-- license>TODO: License declaration</license -->
+ 
+  <depend>rclpy</depend> <!-- rclpy is the Python client library for ROS 2. -->
+  <depend>nav_msgs</depend> <!-- nav_msgs provides navigation-related message types. -->
+  <depend>geometry_msgs</depend> <!-- geometry_msgs provides common geometry message types. -->
+  <depend>tf_transformations</depend> <!-- This is a Python package commonly used to convert quaternions to Euler angles. -->
+  <depend>nav2_msgs</depend> <!-- nav2_msgs provides messages and actions used by Nav2. -->
 
-  <depend>rclpy</depend>
-  <depend>nav_msgs</depend>
-  <depend>geometry_msgs</depend>
-  <depend>tf_transformations</depend>
-  <depend>nav2_msgs</depend>
-
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
-
+  <!-- These are for testing and linting. When you run colcon test -->
+  <test_depend>ament_copyright</test_depend> <!-- Checks copyright/license headers. -->
+  <test_depend>ament_flake8</test_depend> <!-- Runs Flake8 Python style checks. -->
+  <test_depend>ament_pep257</test_depend> <!-- Checks Python docstring style. -->
+  <test_depend>python3-pytest</test_depend> <!-- Provides the Python test runner pytest. -->
+ 
+  <!-- That means colcon will build/install this package using ament_python-->
   <export>
     <build_type>ament_python</build_type>
   </export>
