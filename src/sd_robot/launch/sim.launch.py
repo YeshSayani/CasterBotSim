@@ -82,7 +82,7 @@ def generate_launch_description():
     }
 
 ## Starts the Robot publisher node that takes the URDF as a paramenter 
-## Robot state publisher reads your robot URDF and publishes TF transforms between robot links.
+## Robot state publisher reads your robot URDF and publishes TF (transforms) between robot links.
 ## For example, your URDF may define:
 ## base_footprint → base_link
 ## base_link → left_wheel_link 
@@ -115,19 +115,19 @@ def generate_launch_description():
         package="gazebo_ros", # Package name
         executable="spawn_entity.py", # Executable name, This script reads a robot model and inserts it into the Gazebo simulation.
         arguments=[ 
-          "-topic", "robot_description",
-          "-entity", "simple_sd_robot",
-          "-x", "0.0",
-          "-y", "4.0",
-          "-z", "0.10",
-          "-Y", "-1.57"
+          "-topic", "robot_description", # “Reading the robot model (URDF) from the ROS topic/parameter source named robot_description (Published b y robot_state_publisher).
+          "-entity", "simple_sd_robot", # Giving the entity a model name in Gazebo
+          "-x", "0.0", # Sets the inital x position in the world
+          "-y", "4.0", # Sets the inital y position in the world
+          "-z", "0.10", # Sets the inital z position in the world
+          "-Y", "-1.57" # Sets the inital yaw position in the world, in radians, corresponds to 90 degrees
         ],
-        output="screen"
+        output="screen" # Makes the Node output logs to the terminal screen 
     )
-
+## The final list of items the launch file executes
     return LaunchDescription([
-        set_gazebo_model_path,
-        gazebo_node,
-        robot_state_publisher_node,
-        spawn_robot_node
+        set_gazebo_model_path, # Sets Gazebo model path, allowing gazebo to find models
+        gazebo_node, # Starts Gazebo and loads the world
+        robot_state_publisher_node, # Publishes robots TF tree from the URDF
+        spawn_robot_node # Spawns the robot in the Gazebo at the location defined
     ])
