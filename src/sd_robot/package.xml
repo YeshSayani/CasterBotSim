@@ -1,24 +1,37 @@
-<?xml version="1.0"?>
-<package format="3">
-  <name>sd_robot</name>
-  <version>0.0.1</version>
-  <description>Simple self-driving robot simulation package for ROS 2 Humble and Gazebo Classic.</description>
+<?xml version="1.0"?> <!-- Indicates it is an xml format file, must be the first line in an xml file -->
+<!--This file answers the following:
+1. What is the package name?
+2. What version is it?
+3. Who is the maintainer?
+4. What license does it use?
+5. What build system does it use?
+6. What runtime dependencies does it need?
+7. What test dependencies does it need? -->
 
-  <maintainer email="ysayani24@my.trine.edu">Yeshwanth Sayani</maintainer>
-  <license>Apache-2.0</license>
+<package format="3"> <!-- Indicates the format/version of the package manifest, uses format = '3' since ROS2 uses format 3. -->
+  <name>sd_robot</name> <!-- Package name --> 
+  <version>0.0.1</version> <!-- Package Version, helps track changes for releases -->
+  <description>Self-driving robot simulation package for ROS 2 Humble and Gazebo Classic.</description> <!-- Description of the package and what it does and other information -->
 
-  <buildtool_depend>ament_cmake</buildtool_depend>
+  <maintainer email="yeshwanthsayani9@gmail.com">Yeshwanth Sayani</maintainer> <!-- Declares the person responsible for authoring/maintaining the package, name and email -->
+  <license>Apache-2.0</license> <!-- Package licensed under Apache 2.0, common open source license, including a license is expected -->
 
-  <exec_depend>robot_state_publisher</exec_depend>
-  <exec_depend>joint_state_publisher</exec_depend>
-  <exec_depend>xacro</exec_depend>
-  <exec_depend>gazebo_ros</exec_depend>
-  <exec_depend>gazebo_plugins</exec_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend> <!-- Tells the package uses ament_cmake as its build tool.-->
+  <!-- Colcon sees this package and builds/installs it using CMake through ament_cmake-->
+  <!-- exec_depend means the package is dependent on other packages when running -->
+  <!-- this package is mostly launch files, config files, maps, world maps etc so runtime dependencies are critical -->
+  <exec_depend>robot_state_publisher</exec_depend> <!-- Robot State Publisher reads the robot URDF from robot_description and publishes the Transform frames, dependency declaration means it says it requires robot_state_publisher -->
+  <exec_depend>joint_state_publisher</exec_depend> <!-- Publishes states for joints -->
+  <exec_depend>xacro</exec_depend> <!-- Needs Xacro installed because we use Xacro in the URDF and launch files-->
+  <exec_depend>gazebo_ros</exec_depend> <!-- Required because launch file includes Gazebo's ROS launch file (gazebo.launch.py), also used to start the spawn robot node (spawn_entity.py) -->
+  <exec_depend>gazebo_plugins</exec_depend> <!-- Required because the URDF/Xacro uses Gazebo plugins like the diff drive plugin -->
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <!-- Test dependencies are required for running package tests -->
+  <test_depend>ament_lint_auto</test_depend> <!-- Runs common linters -->
+  <test_depend>ament_lint_common</test_depend> <!-- Includes common ROS2 lint checks -->
 
+  <!-- This tells ROS2 that the package uses ament_cmake as its build type -->
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>ament_cmake</build_type> <!-- This means CMakeLists.txt controls what is installed. Why launch file can later find things using get_package_share_directory("sd_robot") -->
   </export>
 </package>
