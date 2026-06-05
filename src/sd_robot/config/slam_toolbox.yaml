@@ -6,44 +6,47 @@ slam_toolbox: # Indicates ros parameters belong to the node slam_toolbox, node n
     # Frames: These define the TF frames SLAM Toolbox uses.
     odom_frame: odom # Tells SLAM Toolbox that your odometry frame is odom
     map_frame: map  # Tells SLAM Toolbox to create/use the global map frame:
-    base_frame: base_footprint
+    base_frame: base_footprint # Tells the SLAM Toolbox the robot base frame
 
     # Topics
-    scan_topic: /scan
+    scan_topic: /scan # Look for laser scans on /scan topic
 
     # Mode
-    mode: mapping
+    mode: mapping # Run in mapping mode, i.e actively build a map. Other mode is localization when we have a saved map and we are only localizing in it. 
 
     # Map behavior
-    resolution: 0.05
-    max_laser_range: 8.0
-    minimum_time_interval: 0.5
-    transform_timeout: 0.2
-    tf_buffer_duration: 30.0
+    resolution: 0.05 # Sets the map resolution which is 0.05 m/cell or 5 cm/grid cell. Each pixel/cell in the occupancy grid represents 5cm in real/simulated world.
+    max_laser_range: 8.0 # Max laser range is 8.0 m, should match what is in the URDF.
+    minimum_time_interval: 0.5 # How often SLAM Toolbox processes scans. Here it is 2 scans per second. 
+    transform_timeout: 0.2 # How long SLAM Toolbox waits for TF transforms.
+    tf_buffer_duration: 30.0 # How many transforms to store in the buffer.
 
     # Scan matching
-    use_scan_matching: true
-    use_scan_barycenter: true
-    minimum_travel_distance: 0.05
-    minimum_travel_heading: 0.05
-
+    use_scan_matching: true # Compares current laser scan against existing map/previous scans to estimate robot motion accurately.
+    use_scan_barycenter: true # Uses the scan’s geometric center/barycenter.
+    minimum_travel_distance: 0.05 # Min distance to move before SLAM considers processing a new scan. Prevents identical scans.
+    minimum_travel_heading: 0.05 # Min radians robot must rotate before SLAM considers processing a new scan. Prevents identical scans.
+    # Only update when the robot has moved or turned enough to matter.
+    
     # Loop closure
-    do_loop_closing: true
-    loop_search_maximum_distance: 3.0
-    loop_match_minimum_chain_size: 10
-    loop_match_maximum_variance_coarse: 3.0
-    loop_match_minimum_response_coarse: 0.35
-    loop_match_minimum_response_fine: 0.45
+    do_loop_closing: true # If the robot returns to a place it has seen before, SLAM Toolbox recognizes it and corrects accumulated map drift.
+    loop_search_maximum_distance: 3.0 # search for loop closure candidates within 3.0 m 
+    loop_match_minimum_chain_size: 10 # loop closure candidate needs a minimum chain size of 10 poses/scans.This helps prevent weak or accidental loop closures.
+    loop_match_maximum_variance_coarse: 3.0 
+    loop_match_minimum_response_coarse: 0.35 # This is the minimum coarse match score. A higher value means SLAM Toolbox requires stronger evidence before accepting a match.
+    loop_match_minimum_response_fine: 0.45 # This is the minimum fine match score after the coarse match.
 
     # Correlation search
-    correlation_search_space_dimension: 0.5
-    correlation_search_space_resolution: 0.01
+    correlation_search_space_dimension: 0.5 # This controls the scan matching search window. SLAM Toolbox searches around the predicted pose within a local region.
+    # If the odometry is noisy or the robot moves fast, a larger search space can help.
+    correlation_search_space_resolution: 0.01 # This is the resolution of the search. Fine search resolution gives better matching but costs more computation.
+    # Controls how much obstacle/map evidence is smeared during correlation matching.
     correlation_search_space_smear_deviation: 0.1
 
     # Fine search
-    fine_search_angle_offset: 0.00349
-    coarse_search_angle_offset: 0.349
-    coarse_angle_resolution: 0.0349
-    minimum_angle_penalty: 0.9
-    minimum_distance_penalty: 0.5
-    use_response_expansion: true
+    fine_search_angle_offset: 0.00349 # Angular offset used in fine scan matching.
+    coarse_search_angle_offset: 0.349 # This is the angular range/offset for coarse search.
+    coarse_angle_resolution: 0.0349 # Angular resolution for coarse search.
+    minimum_angle_penalty: 0.9 # Penalizes angular differences during scan matching.
+    minimum_distance_penalty: 0.5 # Penalizes distance differences during scan matching.
+    use_response_expansion: true # Allows the matcher to expand the response around good matches.
