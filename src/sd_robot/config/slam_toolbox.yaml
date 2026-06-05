@@ -1,11 +1,11 @@
-slam_toolbox:
+slam_toolbox: # Indicates ros parameters belong to the node slam_toolbox, node name must match the launch file name
   ros__parameters:
 
-    use_sim_time: true
+    use_sim_time: true # Instructs SLAM Toolbox to use simulation time, redundant since it is mentioned in the launch file, but good practice.
 
-    # Frames
-    odom_frame: odom
-    map_frame: map
+    # Frames: These define the TF frames SLAM Toolbox uses.
+    odom_frame: odom # Tells SLAM Toolbox that your odometry frame is odom
+    map_frame: map  # Tells SLAM Toolbox to create/use the global map frame:
     base_frame: base_footprint
 
     # Topics
