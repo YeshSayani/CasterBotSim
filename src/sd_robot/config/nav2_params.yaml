@@ -1,72 +1,78 @@
-amcl:
+amcl:  # Configures the node /amcl
   ros__parameters:
     use_sim_time: true
-    alpha1: 0.05
-    alpha2: 0.05
-    alpha3: 0.05
-    alpha4: 0.05
+    alpha1: 0.05 # These are AMCL odometry noise parameters.
+    alpha2: 0.05 # Lower values mean AMCL trusts odometry more.
+    alpha3: 0.05 # How much should I trust odometry?
+    alpha4: 0.05 # How noisy is the robot motion model?
     alpha5: 0.05
     base_frame_id: "base_footprint"
     odom_frame_id: "odom"
     global_frame_id: "map"
-    scan_topic: "/scan"
-    max_beams: 60
-    min_particles: 500
-    max_particles: 2000
+    scan_topic: "/scan" # AMCL listens to the lidar scan topic.
+    max_beams: 60 # LiDAR produces 360 beams per scan, but AMCL uses only 60. If localization is jumpy, increase to 120.
+    min_particles: 500 # AMCL uses particles to estimate robot pose. Akin to guesses of where the robot might be.
+    max_particles: 2000 # More particles = more robust localization, but more CPU.
     set_initial_pose: true
     initial_pose:
       x: 0.0
-      y: 0.0
+      y: 4.0
       z: 0.0
-      yaw: 0.0
+      yaw: -1.57
 
-map_server:
+map_server: # Configures /map_server. Loads the saved map and publishes /map and map metadata
   ros__parameters:
     use_sim_time: true
-    yaml_filename: "/home/yeshwanth/self_drive_ws/maps/warehouse_world_map.yaml.yaml"
+    yaml_filename: "/home/yeshwanth/self_drive_ws/maps/warehouse_world_map.yaml" # Redundant as this is set in the launch file, can remove it here. 
 
-map_saver:
+map_saver: # Configures the map saver utility.
   ros__parameters:
     use_sim_time: true
-    save_map_timeout: 5.0
+    save_map_timeout: 5.0 # Wait up to 5 seconds before saving the map.
+    # These define how occupancy probabilities become free/occupied in the saved map.
+    # Threshold below 0.25 is free in the occupancy grid.
+    # Above 0.65 is occupied in the occupancy grid.  
     free_thresh_default: 0.25
     occupied_thresh_default: 0.65
 
+# Configures the global planner.
 planner_server:
   ros__parameters:
     use_sim_time: true
-    expected_planner_frequency: 5.0
-    planner_plugins: ["GridBased"]
+    expected_planner_frequency: 5.0 # Planner expected frequency is 5 Hz.
+    planner_plugins: ["GridBased"] # Says there is one planner plugin named: GridBased
     GridBased:
-      plugin: "nav2_navfn_planner/NavfnPlanner"
-      tolerance: 0.3
-      use_astar: false
-      allow_unknown: true
+      plugin: "nav2_navfn_planner/NavfnPlanner" # This uses the NavFn planner. NavFn is a classic grid-based global planner. It computes a path through an occupancy grid/costmap.
+      tolerance: 0.3 # If the exact goal is blocked or unreachable, the planner can accept a nearby pose within 0.3 m.
+      use_astar: false # This means NavFn uses Dijkstra-style planning, not A*.
+      allow_unknown: true # This allows planning through unknown space.
 
-controller_server:
-  ros__parameters:
+controller_server: # Not using the controller, planner_only.launch does not controller server.
+  ros__parameters: # Would be used to launch full Nav2 path following.
     use_sim_time: true
-    controller_frequency: 20.0
-    min_x_velocity_threshold: 0.001
-    min_y_velocity_threshold: 0.5
+    controller_frequency: 20.0 # If launched, controller server would run at 20 Hz.
+    # These define velocity deadbands.
+    # For a differential-drive robot, y velocity is not used.
+    min_x_velocity_threshold: 0.001 
+    min_y_velocity_threshold: 0.5 # max_vel_y is set at 0 later, does not matter.
     min_theta_velocity_threshold: 0.001
     progress_checker_plugin: "progress_checker"
     goal_checker_plugins: ["general_goal_checker"]
     controller_plugins: ["FollowPath"]
 
-    progress_checker:
+    progress_checker: # Checks whether the robot is making progress.
       plugin: "nav2_controller::SimpleProgressChecker"
-      required_movement_radius: 0.05
-      movement_time_allowance: 20.0
+      required_movement_radius: 0.05 # Robot needs to move 0.05 m. 
+      movement_time_allowance: 20.0 # Needs to move atleast 0.05 m within 20 seconds. 
 
-    general_goal_checker:
+    general_goal_checker: # Checks whether goal has been reached. 
       stateful: true
       plugin: "nav2_controller::SimpleGoalChecker"
-      xy_goal_tolerance: 0.15
-      yaw_goal_tolerance: 0.25
+      xy_goal_tolerance: 0.15 # Bounds on xy position. 
+      yaw_goal_tolerance: 0.25 # Bounds on yaw.
 
     FollowPath:
-      plugin: "dwb_core::DWBLocalPlanner"
+      plugin: "dwb_core::DWBLocalPlanner" # DWB, Dynamic Window Approach samples possible velocities and scores trajectories.
       debug_trajectory_details: false
       min_vel_x: 0.0
       min_vel_y: 0.0
@@ -93,15 +99,15 @@ controller_server:
       trans_stopped_velocity: 0.05
       short_circuit_trajectory_evaluation: true
       stateful: true
-      critics:
+      critics: # DWB critics are scoring terms.
         [
-          "RotateToGoal",
-          "Oscillation",
-          "BaseObstacle",
-          "GoalAlign",
-          "PathAlign",
-          "PathDist",
-          "GoalDist"
+          "RotateToGoal", # rotate to final goal heading
+          "Oscillation", # avoid back-and-forth behavior
+          "BaseObstacle", # avoid obstacles
+          "GoalAlign", # align with goal
+          "PathAlign", # align with path direction
+          "PathDist", # stay close to global path
+          "GoalDist" # move toward goal
         ]
       BaseObstacle.scale: 0.02
       PathAlign.scale: 16.0
@@ -114,24 +120,25 @@ controller_server:
       RotateToGoal.slowing_factor: 3.0
       RotateToGoal.lookahead_time: -1.0
 
-local_costmap:
+local_costmap: # Configures local cost map
   local_costmap:
     ros__parameters:
       use_sim_time: true
       update_frequency: 5.0
       publish_frequency: 2.0
-      global_frame: odom
+      global_frame: odom # Local costmap is centered around the robot in the odom frame.
       robot_base_frame: base_footprint
       rolling_window: true
       width: 3
       height: 3
       resolution: 0.05
-      robot_radius: 0.22
-      plugins: ["obstacle_layer", "inflation_layer"]
+      robot_radius: 0.22 # Might need changing to 0.25 m
+      # Nav2 treats your robot like a circle, the circle radius must at least cover the farthest part of the robot
+      plugins: ["obstacle_layer", "inflation_layer"] # Local costmap uses live lidar obstacles and inflation.
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
-        observation_sources: scan
+        observation_sources: scan # Uses /scan to detect obstacles.
         scan:
           topic: /scan
           max_obstacle_height: 2.0
@@ -145,25 +152,25 @@ local_costmap:
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
-        inflation_radius: 0.35
+        inflation_radius: 0.35 # Inflation adds a safety buffer around obstacles.
       always_send_full_costmap: true
 
-global_costmap:
-  global_costmap:
+global_costmap: # Configures the global costmap used by the planner server.
+  global_costmap: 
     ros__parameters:
       use_sim_time: true
       update_frequency: 2.0
       publish_frequency: 1.0
-      global_frame: map
+      global_frame: map # Global costmap is in the map frame.
       robot_base_frame: base_footprint
       resolution: 0.05
       robot_radius: 0.22
-      track_unknown_space: true
+      track_unknown_space: true # means it preserves unknown areas.
       plugins: ["static_layer", "obstacle_layer", "inflation_layer"]
-      static_layer:
+      static_layer: # Subscribes to the saved map from map_server.
         plugin: "nav2_costmap_2d::StaticLayer"
         map_subscribe_transient_local: true
-      obstacle_layer:
+      obstacle_layer: # This adds live obstacles from /scan.
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: true
         observation_sources: scan
@@ -177,13 +184,14 @@ global_costmap:
           raytrace_min_range: 0.0
           obstacle_max_range: 7.5
           obstacle_min_range: 0.0
-      inflation_layer:
+      inflation_layer: # This expands obstacle costs around walls/shelves/boxes.
+      #This helps the planner avoid paths too close to obstacles.
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
         inflation_radius: 0.35
       always_send_full_costmap: true
 
-bt_navigator:
+bt_navigator: # bt_navigator uses full navigation, planner only launch does not start bt_navigator
   ros__parameters:
     use_sim_time: true
     global_frame: map
@@ -193,7 +201,7 @@ bt_navigator:
     default_server_timeout: 20
     wait_for_service_timeout: 1000
 
-behavior_server:
+behavior_server: # Configures recovery behviors such as spin, backup, wait etc. 
   ros__parameters:
     use_sim_time: true
     global_frame: odom
@@ -204,7 +212,7 @@ behavior_server:
     min_rotational_vel: 0.2
     rotational_acc_lim: 1.0
 
-waypoint_follower:
+waypoint_follower: # ROS waypoint follower, not used. 
   ros__parameters:
     use_sim_time: true
     loop_rate: 20
@@ -215,7 +223,7 @@ waypoint_follower:
       enabled: true
       waypoint_pause_duration: 200
 
-velocity_smoother:
+velocity_smoother: # smooths velocity commands before sending them to the robot. Not used 
   ros__parameters:
     use_sim_time: true
     smoothing_frequency: 20.0
