@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
+# Tells Linux to run the file using Python 3 if executed directly.
 
 import math
 
-import rclpy
+import rclpy # Imports ROS 2 Python tools.
 from rclpy.node import Node
 
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
+from nav_msgs.msg import Odometry # Imports Odometry message
+from geometry_msgs.msg import Twist # Imports Twist message
 
 
-class WaypointFollower(Node):
-    def __init__(self):
-        super().__init__("waypoint_follower_controller")
+class WaypointFollower(Node): # Defines ROS2 node class type called WaypointFollower, Inherits from Node
+    def __init__(self): # Initializes ROS2 Node and names it /waypoint_follower_controller.
+        super().__init__("waypoint_follower_controller") 
 
-        # Waypoints in odom frame
+        # Waypoints in odom frame, list of target points.
         self.waypoints = [
             (-1.0, 0.0),
             (-1.0, -1.0),
@@ -21,17 +22,19 @@ class WaypointFollower(Node):
             (0.0, 0.0),
         ]
 
-        self.current_waypoint_index = 0
+        self.current_waypoint_index = 0 # Tracks which waypoint the robot is following currently. Initially 0, the active waypoint is self.waypoints[0].
 
         # Controller gains
         self.k_linear = 0.5
+        # linear.x = k_linear × distance_error
         self.k_angular = 1.8
+        # angular.z = k_angular × heading_error
 
         # Speed limits
         self.max_linear_speed = 0.25
         self.max_angular_speed = 0.8
 
-        # Tolerances
+        # Tolerances.
         self.distance_tolerance = 0.10
         self.heading_tolerance = 0.15
 
@@ -42,21 +45,25 @@ class WaypointFollower(Node):
         self.odom_received = False
         self.finished = False
 
-        self.odom_sub = self.create_subscription(
-            Odometry,
-            "/odom",
-            self.odom_callback,
-            10
+        # Odometry subscriber.
+        self.odom_sub = self.create_subscription( # Subscriber
+            Odometry, # Message Type.
+            "/odom", # Topic it subscribes to. 
+            self.odom_callback, # Callback function. 
+            10 # Queue Size.
         )
-
-        self.cmd_pub = self.create_publisher(
-            Twist,
-            "/cmd_vel",
-            10
+        
+        # Velocity publisher.
+        self.cmd_pub = self.create_publisher( # Publisher
+            Twist, # Message Type.
+            "/cmd_vel", # Topic to publish on.
+            10 # Queue Size.
         )
+        
+        # Runs the control loop every 0.05 seconds.
+        self.timer = self.create_timer(0.05, self.control_loop) 
 
-        self.timer = self.create_timer(0.05, self.control_loop)
-
+        # Prints controller startup information.
         self.get_logger().info("Waypoint follower started.")
         self.get_logger().info(f"Waypoints: {self.waypoints}")
 
