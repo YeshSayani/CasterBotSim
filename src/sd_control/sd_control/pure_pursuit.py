@@ -1,22 +1,24 @@
 #!/usr/bin/env python3
+# Python Shebang, tells linux to execute the script with python3 if executed directly.
 
 import math
 
-import rclpy
-from rclpy.node import Node
+import rclpy # ROS2 Python imports 
+from rclpy.node import Node # Imports Node
 
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
-from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point
+from nav_msgs.msg import Odometry # Message type for /odom
+from geometry_msgs.msg import Twist # Message type for /cmd_vel
+from visualization_msgs.msg import Marker # Rviz Visualization
+from geometry_msgs.msg import Point # Rviz Visualization
 
 
-class PurePursuitController(Node):
+class PurePursuitController(Node): # Creates a ROS2 Node class.
     def __init__(self):
-        super().__init__("pure_pursuit_controller")
+        super().__init__("pure_pursuit_controller") # Inherits from Node, so it can create subscribers, publishers, timers, and logs.
 
         # Path in odom frame.
         # This creates a smooth-ish loop around the map.
+        # Hardcoded sparse list of waypoints. Pure pursuit will chase points from this list.
         self.path = [
             (0.0, 0.0),
             (0.5, 0.0),
@@ -26,14 +28,25 @@ class PurePursuitController(Node):
             (0.8, -1.0),
             (0.3, -1.0),
         ]
-
+        # Critical pure pursuit parameter, robot chases a point approximately 0.45 m ahead of it. 
+        # Smaller lookahead:
+        # tighter tracking
+        # more aggressive steering
+        # more oscillation risk
+    
+        # Larger lookahead: smoother tracking
+        # Less accurate around sharp turns
         self.lookahead_distance = 0.45
 
+        # Controller uses a constant forward speed. 
         self.linear_speed = 0.22
+        # Clamp on the maximum angular speed.
         self.max_angular_speed = 1.0
 
+        # Tolerance - if the robot gets within 12 cm of the goal, it stops. 
         self.goal_tolerance = 0.12
 
+        # Store the robot's current state
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
