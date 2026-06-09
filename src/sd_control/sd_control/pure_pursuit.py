@@ -29,8 +29,7 @@ class PurePursuitController(Node): # Creates a ROS2 Node class.
             (0.3, -1.0),
         ]
         # Critical pure pursuit parameter, robot chases a point approximately 0.45 m ahead of it. 
-        # Smaller lookahead:
-        # tighter tracking
+        # Smaller lookahead: tighter tracking
         # more aggressive steering
         # more oscillation risk
     
@@ -53,48 +52,60 @@ class PurePursuitController(Node): # Creates a ROS2 Node class.
         self.odom_received = False
         self.finished = False
 
+        # Set the initial closest index to 0. 
+        # The controller only searches forward from the current closest index, preventing going backward along the same path.
         self.closest_index = 0
 
+        # Odometry subscriber, subscribes to /odom.
         self.odom_sub = self.create_subscription(
-            Odometry,
-            "/odom",
-            self.odom_callback,
-            10
+            Odometry, # Message Type
+            "/odom", # Topic to listen to
+            self.odom_callback, # Odom callback function
+            10 # Queue Size
         )
 
+        # cmd_vel publisher
         self.cmd_pub = self.create_publisher(
-            Twist,
-            "/cmd_vel",
-            10
+            Twist, # Message type
+            "/cmd_vel", # Topic to publish on
+            10 # Queue Size
         )
 
+        # Publisher for path marker (Visualization)
         self.path_marker_pub = self.create_publisher(
-            Marker,
-            "/pure_pursuit_path",
-            10
+            Marker, # Message Type
+            "/pure_pursuit_path", # Topic to publish on
+            10 # Queue size
         )
 
+        # Publisher for a sphere marker for the lookahead point.
         self.lookahead_marker_pub = self.create_publisher(
-            Marker,
-            "/pure_pursuit_lookahead",
-            10
+            Marker, # Message Type
+            "/pure_pursuit_lookahead", # Topic to publish on
+            10 # Queue size 
         )
 
+        # Runs the control loop every 0.05 seconds.
         self.timer = self.create_timer(0.05, self.control_loop)
 
+        # Print out statements for when the controller started and the lookahead distance
         self.get_logger().info("Pure Pursuit controller started.")
         self.get_logger().info(f"Lookahead distance: {self.lookahead_distance:.2f} m")
 
     def odom_callback(self, msg):
+        # Gets the current position of the robot.
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
 
+        # Gets the robot orientation quaternion 
         q = msg.pose.pose.orientation
 
+        # Converts quaternion into yaw angle.
         siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self.yaw = math.atan2(siny_cosp, cosy_cosp)
 
+        # Marks True if odometry is received.
         self.odom_received = True
 
     def clamp(self, value, min_value, max_value):
