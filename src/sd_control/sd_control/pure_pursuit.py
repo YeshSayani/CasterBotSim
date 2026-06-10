@@ -29,7 +29,7 @@ class PurePursuitController(Node): # Creates a ROS2 Node class.
             (0.3, -1.0),
         ]
         # Critical pure pursuit parameter, robot chases a point approximately 0.45 m ahead of it. 
-        # Smaller lookahead: tighter tracking
+        # Smaller lookahead: ktighter tracking
         # more aggressive steering
         # more oscillation risk
     
@@ -107,29 +107,40 @@ class PurePursuitController(Node): # Creates a ROS2 Node class.
 
         # Marks True if odometry is received.
         self.odom_received = True
-
+    
+    # Limits a value between a miniumum and maximum
     def clamp(self, value, min_value, max_value):
         return max(min(value, max_value), min_value)
 
+    # Computes the Euclidean distance between (x,y) points Sqrt[((x1-x2)^2)+((y1-y2)^2)]
     def distance(self, p1, p2):
         dx = p1[0] - p2[0]
         dy = p1[1] - p2[1]
         return math.sqrt(dx * dx + dy * dy)
-
+    
+    # Finds the path point closest to the robot.
     def find_closest_index(self):
-        robot_pos = (self.x, self.y)
+        # Stores the current robot position.
+        robot_pos = (self.x, self.y) 
 
+        # Stores the best index as the closest index
         best_index = self.closest_index
+        # Stores and starts the best distance as the infinity
         best_dist = float("inf")
 
-        # Search forward from current closest index.
+        # Search forward from current closest index to the end of the path.
         for i in range(self.closest_index, len(self.path)):
+            # Finds the distance between current robot position and path index.
             d = self.distance(robot_pos, self.path[i])
+            # Compares the current distance to the best distance.
+            # if current distance is less than best distance, switches best distance to d and best index = i.
             if d < best_dist:
                 best_dist = d
                 best_index = i
 
+        # Sets the closest index as the best index
         self.closest_index = best_index
+        # Returns the best index
         return best_index
 
     def find_lookahead_point(self):
