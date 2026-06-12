@@ -144,17 +144,21 @@ class PurePursuitController(Node): # Creates a ROS2 Node class.
         return best_index
 
     def find_lookahead_point(self):
+        # Finds the closest path point and searches forward from that point.
         robot_pos = (self.x, self.y)
 
         closest = self.find_closest_index()
 
-        for i in range(closest, len(self.path)):
-            d = self.distance(robot_pos, self.path[i])
-            if d >= self.lookahead_distance:
+        # Finds the first path point ahead whose distance is >= lookahead distance.
+        # Does NOT interpolate, just chooses the next point in the path list.
+        for i in range(closest, len(self.path)): # Iterate through the list from the closest point to the end.
+            d = self.distance(robot_pos, self.path[i]) # Sets the distance from current position to the current point in the list. 
+            if d >= self.lookahead_distance: # Return the first point on the list that is greater than the lookahead distance.
                 return self.path[i], i
 
-        return self.path[-1], len(self.path) - 1
+        return self.path[-1], len(self.path) - 1 # If no point in the list is far enough ahead, return the final point.  
 
+    # Computes vector from robot to lookahead point in the world/odom frame.
     def transform_to_robot_frame(self, point):
         dx = point[0] - self.x
         dy = point[1] - self.y
@@ -164,100 +168,131 @@ class PurePursuitController(Node): # Creates a ROS2 Node class.
         y_robot = -math.sin(self.yaw) * dx + math.cos(self.yaw) * dy
 
         return x_robot, y_robot
+    #x_robot > 0 means point is in front of robot
+    #x_robot < 0 means point is behind robot
+    #y_robot > 0 means point is to the left of robot
+    #y_robot < 0 means point is to the right of robot
 
     def publish_stop(self):
+    # This function returns stop messages in the form of zero velocity commands. 
         self.cmd_pub.publish(Twist())
 
     def publish_path_marker(self):
-        marker = Marker()
-        marker.header.frame_id = "odom"
-        marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = "pure_pursuit_path"
-        marker.id = 0
-        marker.type = Marker.LINE_STRIP
-        marker.action = Marker.ADD
-        marker.scale.x = 0.04
-        marker.color.a = 1.0
-        marker.color.g = 1.0
+        # This function creates an Rviz marker message
+        marker = Marker() # Creates an instance of the Marker object type.
+        marker.header.frame_id = "odom"# Marker is drawn in the odom frame
+        marker.header.stamp = self.get_clock().now().to_msg() 
+        marker.ns = "pure_pursuit_path" # Namespace 
+        marker.id = 0 # Name space id
+        marker.type = Marker.LINE_STRIP # Marker type is a connected line strip
+        marker.action = Marker.ADD 
+        marker.scale.x = 0.04 # Marker line width 
+        marker.color.a = 1.0 # Marker is fully opaque
+        marker.color.g = 1.0 # Marker color is green
 
         for x, y in self.path:
+        # This converts each path point into an Rviz marker and appends it to the line strip.
             p = Point()
             p.x = x
             p.y = y
             p.z = 0.03
             marker.points.append(p)
-
-        self.path_marker_pub.publish(marker)
+        # Publishes the path marker.
+        self.path_marker_pub.publish(marker) 
 
     def publish_lookahead_marker(self, point):
-        marker = Marker()
-        marker.header.frame_id = "odom"
-        marker.header.stamp = self.get_clock().now().to_msg()
-        marker.ns = "pure_pursuit_lookahead"
-        marker.id = 1
-        marker.type = Marker.SPHERE
+        marker = Marker() # Creates a Marker for the lookahead point.
+        marker.header.frame_id = "odom" # Look ahead frame is drawn in odom frame
+        marker.header.stamp = self.get_clock().now().to_msg()   
+        marker.ns = "pure_pursuit_lookahead" # Namespace  
+        marker.id = 1 # ID
+        marker.type = Marker.SPHERE # Sphere marker 
         marker.action = Marker.ADD
-        marker.pose.position.x = point[0]
+        # Places the sphere at the lookahead point 
+        marker.pose.position.x = point[0] 
         marker.pose.position.y = point[1]
+        # Places the sphere above the ground
         marker.pose.position.z = 0.08
+        # Sphere is 0.18 m in diameter in x, y, z.
         marker.scale.x = 0.18
         marker.scale.y = 0.18
         marker.scale.z = 0.18
+        # Makes the marker reddish
         marker.color.a = 1.0
         marker.color.r = 1.0
         marker.color.g = 0.2
         marker.color.b = 0.2
 
+        # publishes the sphere marker
         self.lookahead_marker_pub.publish(marker)
 
     def control_loop(self):
-        self.publish_path_marker()
+        self.publish_path_marker() # Means every control loop publishes the path marker, meaning Rviz keeps seeing the path. 
 
-        if not self.odom_received:
+        if not self.odom_received: # Do nothing until odometry is received.
             return
 
-        if self.finished:
+        if self.finished: # If the path is complete, keep publishing stop
             self.publish_stop()
             return
 
-        final_goal = self.path[-1]
-        final_distance = self.distance((self.x, self.y), final_goal)
+        final_goal = self.path[-1] # The final goal is the last point. 
+        final_distance = self.distance((self.x, self.y), final_goal) # Final distance is the robot distance to the final point. 
 
-        if final_distance < self.goal_tolerance and self.closest_index >= len(self.path) - 2:
+        if final_distance < self.goal_tolerance and self.closest_index >= len(self.path) - 2: 
+            # If the final distance is less than the tolerance, i.e close to the final point,
+            # and the closest index is near the end of the path, i.e 1 previous,
+            # Prevents the robot from stopping early if it starts near the final point but has not followed the path. 
+            # Finally marks the path complete and stops the robot.
             self.finished = True
             self.publish_stop()
             self.get_logger().info("Pure Pursuit path complete.")
             return
 
+        # Find and publish the look ahead point 
         lookahead_point, lookahead_index = self.find_lookahead_point()
         self.publish_lookahead_marker(lookahead_point)
 
+        # Gives the lookahead point co-ordinates relative to the robot.
+        # Important step prior to calculating the curvature
         x_robot, y_robot = self.transform_to_robot_frame(lookahead_point)
 
+        # Creates the velocity command.
         cmd = Twist()
 
         # If lookahead point is behind robot, rotate in place.
         if x_robot <= 0.05:
             cmd.linear.x = 0.0
+            # If the point is to the left, turn counter clockwise, if right, turn clockwise.
             cmd.angular.z = self.max_angular_speed if y_robot > 0 else -self.max_angular_speed
             self.cmd_pub.publish(cmd)
             return
 
         # Pure pursuit curvature formula for 2D path tracking:
         # curvature = 2*y / Ld^2
+        # If lookahead point is left:
+        # y_robot > 0
+        # curvature > 0
+        # If lookahead point is right:
+        # y_robot < 0
+        # curvature < 0
         curvature = 2.0 * y_robot / (self.lookahead_distance * self.lookahead_distance)
 
         cmd.linear.x = self.linear_speed
+        # Convert curvature into angular velocity
         cmd.angular.z = cmd.linear.x * curvature
 
+        # clamps the angular velocity between -1.0 and 1.0 rad/s
         cmd.angular.z = self.clamp(
             cmd.angular.z,
             -self.max_angular_speed,
             self.max_angular_speed
         )
 
+        # Publishes the velocity command. 
         self.cmd_pub.publish(cmd)
         
+        # Debugging logger block.
         self.get_logger().info(
             "\n"
             "================ Pure Pursuit Control DEBUG ================\n"
@@ -273,14 +308,17 @@ class PurePursuitController(Node): # Creates a ROS2 Node class.
 
 
 def main(args=None):
+    # Initializes ROS2 
     rclpy.init(args=args)
+    # Creates PurePursuitController node.
     node = PurePursuitController()
 
+    # Keeps the node alive until keyboard interrupts
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
-
+    # Stops the robot and shuts down node cleanly on exit. 
     node.publish_stop()
     node.destroy_node()
     rclpy.shutdown()
