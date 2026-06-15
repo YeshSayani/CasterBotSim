@@ -17,6 +17,14 @@ from datetime import datetime
 import rclpy
 from rclpy.node import Node
 
+from tf2_ros import (
+    Buffer,
+    TransformListener,
+    LookupException,
+    ConnectivityException,
+    ExtrapolationException,
+)
+
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
@@ -51,6 +59,16 @@ class StanleyController(Node):
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
+
+        # Frame setup
+        # /planned_path is in map frame, Controller must also use robot pose in map frame. 
+        # Comment out later if required
+        # self.path_frame = "map"
+        # self.robot_frame = "base_footprint"
+
+        # Comment out later if required
+        # self.tf_buffer = Buffer()
+        # self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # Sets these flags to false intially, so the controller does nothing until /odom and /planned_path have been received.
         self.odom_received = False
@@ -135,14 +153,37 @@ class StanleyController(Node):
         # Reads Robot position from /odom, converts quaternions into Yaw.
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
-
         q = msg.pose.pose.orientation
-
         siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self.yaw = math.atan2(siny_cosp, cosy_cosp)
-
         self.odom_received = True
+
+  #  def update_robot_pose_from_tf(self):
+  #      try:
+  #          transform = self.tf_buffer.lookup_transform(
+  #              self.path_frame,      # target frame: map
+  #              self.robot_frame,     # source frame: base_footprint
+  #              rclpy.time.Time()
+  #          )
+  #      except (LookupException, ConnectivityException, ExtrapolationException) as ex:
+  #          self.get_logger().warn(
+  #              f"Could not get transform {self.path_frame} -> {self.robot_frame}: {ex}",
+  #              throttle_duration_sec=1.0
+  #          )
+  #          return False
+#
+  #      t = transform.transform.translation
+  #      q = transform.transform.rotation
+#
+  #      self.x = t.x
+  #      self.y = t.y
+#
+  #      siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+  #      cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+  #      self.yaw = math.atan2(siny_cosp, cosy_cosp)
+#
+  #      return True
 
     def path_callback(self, msg):
         if len(msg.poses) < 2:
@@ -316,6 +357,13 @@ class StanleyController(Node):
         # Waits until both odometry and path are ready.
         if not self.odom_received or not self.path_received:
             return
+        
+        # if not self.path_received:
+        #    return
+        
+        # Update robot pose in the same frame as /planned_path: map.
+        # if not self.update_robot_pose_from_tf():
+        #    return
 
         # If path is complete, keep publishing stop messages.
         if self.finished:
