@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Subscribes to /odom and /planned_path and publishes to /pp_plan_path, /pp_plan_lookahead and /cmd_vel 
+
 import math
 import csv
 import os
@@ -13,17 +15,19 @@ from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 
-
+# Defines the ROS2 node class 
 class PurePursuitPlanFollower(Node):
     def __init__(self):
-        super().__init__("pure_pursuit_plan_follower")
+        super().__init__("pure_pursuit_plan_follower") # Names the node pure_pursuit_plan_follower
 
-        self.path = []
-        self.closest_index = 0
+        # Helps prevent controller from jumping back to earlier path points.
+        self.path = [] # Empty till /planned_path becomes active.
+        self.closest_index = 0 # Tracks progress along path.
 
+        # Robot chases a point 0.45 m ahead on the planned path.
         self.lookahead_distance = 0.45
 
-        # Speed settings
+        # Speed limiter settings
         self.max_linear_speed = 0.25
         self.min_linear_speed = 0.08
         self.max_angular_speed = 1.0
@@ -33,17 +37,21 @@ class PurePursuitPlanFollower(Node):
         self.curvature_speed_gain = 0.8
 
         # Goal behavior
+        # Controller stops when the robot is within 15 cm of the goal.
         self.goal_tolerance = 0.15
+        # Reduce speed when within 0.6 m of the final goal. 
         self.slowdown_distance = 0.60
+        # Caps speed to 0.1 m/s when near the goal.
         self.goal_linear_speed = 0.10
 
+        # Robot State Parameters.
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
 
-        self.odom_received = False
-        self.path_received = False
-        self.finished = False
+        self.odom_received = False # Becomes true after /odom is received.
+        self.path_received = False # Becomes true after /planned_path is received.
+        self.finished = False # Becomes true after goal is reached.
         
         # CSV logging
         self.log_dir = os.path.expanduser("~/self_drive_ws/logs/controller_logs")
