@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+# This controller follows a Nav2-generated path from: /planned_path.
+# Subscribes to /odom, /planned_path
+# Publishes to /cmd_vel, /stanley_path, /stanley_closest_point.
+# Stanley Controller basically says:
+    # Find the closest point on the path.
+    # Match the path heading.
+    # Correct lateral cross-track error.
+    # Basically, angular_cmd = heading correction + cross-track correction.
+
 import math
 import csv
 import os
@@ -11,21 +20,24 @@ from rclpy.node import Node
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point
+from geometry_msgs.msg import Point # Marker Points.
 
-
+# Defines the stanley controller node.
 class StanleyController(Node):
     def __init__(self):
+        # Names the node Stanley Controller.
         super().__init__("stanley_controller")
 
-        self.path = []
-        self.closest_index = 0
+        self.path = [] # Stores the path from /planned_path.
+        self.closest_index = 0 # Stores the closest index, tracks progress along the path.
 
-        # Controller tuning
-        self.k_cross_track = 1.2
+        # Controller tuning, main stanley gains.
+        # Weights lateral error, higher value is more aggressive towards center line.  
+        self.k_cross_track = 1.2 
+        # Weights Heading error, higher value is more aggressive towards path direction.  
         self.k_heading = 1.5
 
-        # Speed tuning
+        # Speed tuning and limits
         self.max_linear_speed = 0.22
         self.min_linear_speed = 0.08
         self.max_angular_speed = 1.0
@@ -40,14 +52,16 @@ class StanleyController(Node):
         self.y = 0.0
         self.yaw = 0.0
 
+        # Sets these flags to false intially, so the controller does nothing until /odom and /planned_path have been received.
         self.odom_received = False
         self.path_received = False
         self.finished = False
 
         # CSV logging
+        # Creates the log directory if needed.
         self.log_dir = os.path.expanduser("~/self_drive_ws/logs/controller_logs")
         os.makedirs(self.log_dir, exist_ok=True)
-
+        # Creates a timestamped log file such as: stanley_log_2026_06_14_153020.csv
         timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S")
         self.log_path = os.path.join(
             self.log_dir,
@@ -75,6 +89,7 @@ class StanleyController(Node):
 
         self.get_logger().info(f"Logging Stanley data to: {self.log_path}")
 
+        # Reads robot pose from /odom
         self.odom_sub = self.create_subscription(
             Odometry,
             "/odom",
@@ -82,6 +97,7 @@ class StanleyController(Node):
             10
         )
 
+        # Reads the Nav2 path from /planned_path
         self.path_sub = self.create_subscription(
             Path,
             "/planned_path",
@@ -89,30 +105,34 @@ class StanleyController(Node):
             10
         )
 
+        # Publishes velocity commands to the robot.
         self.cmd_pub = self.create_publisher(
             Twist,
             "/cmd_vel",
             10
         )
-
+        # Publisher for the path marker for Rviz.
         self.path_marker_pub = self.create_publisher(
             Marker,
             "/stanley_path",
             10
         )
 
+        # Publishes a sphere marker at the closest point.
         self.closest_marker_pub = self.create_publisher(
             Marker,
             "/stanley_closest_point",
             10
         )
 
+        # Runs the controller at 20 Hz
         self.timer = self.create_timer(0.05, self.control_loop)
 
         self.get_logger().info("Stanley controller started.")
         self.get_logger().info("Waiting for /planned_path and /odom...")
 
     def odom_callback(self, msg):
+        # Reads Robot position from /odom, converts quaternions into Yaw.
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
 
@@ -126,16 +146,18 @@ class StanleyController(Node):
 
     def path_callback(self, msg):
         if len(msg.poses) < 2:
+            # Stanley needs atleast two points as it computes path heading using point i and i + 1.
             self.get_logger().warn("Received path with fewer than 2 poses. Ignoring.")
             return
 
         self.path = []
-
+        # Converts the ROS path into a list of (x,y) points. 
         for pose_stamped in msg.poses:
             x = pose_stamped.pose.position.x
             y = pose_stamped.pose.position.y
             self.path.append((x, y))
 
+        # Resets tracking when a new path arrives.
         self.closest_index = 0
         self.path_received = True
         self.finished = False
@@ -143,6 +165,7 @@ class StanleyController(Node):
         self.get_logger().info(f"Received new /planned_path with {len(self.path)} points.")
 
     def normalize_angle(self, angle):
+        # Keeps angles between -pi and pi.
         while angle > math.pi:
             angle -= 2.0 * math.pi
         while angle < -math.pi:
@@ -150,19 +173,23 @@ class StanleyController(Node):
         return angle
 
     def clamp(self, value, min_value, max_value):
+        # Clamps the values between a minimum and maximum.
         return max(min(value, max_value), min_value)
 
     def distance(self, p1, p2):
+        # Computes Euclidean distance between two points.
         dx = p1[0] - p2[0]
         dy = p1[1] - p2[1]
         return math.sqrt(dx * dx + dy * dy)
 
     def publish_stop(self):
+        # Publishes stop commands or Zero velocity commands. 
         self.cmd_pub.publish(Twist())
 
     def find_closest_index(self):
+        # Finds the closest path point to the robot.
+        # Starts at self.closest_index. 
         robot_pos = (self.x, self.y)
-
         best_index = self.closest_index
         best_dist = float("inf")
 
@@ -173,10 +200,13 @@ class StanleyController(Node):
                 best_index = i
 
         self.closest_index = best_index
+        # It returns: closest_index and absolute distance to closest point
         return best_index, best_dist
 
     def get_path_heading(self, index):
-        if index >= len(self.path) - 1:
+        # This computes the direction of the path segment at the closest point.
+        # It uses the vector: path[index] -> path[index + 1]
+        if index >= len(self.path) - 1: # Prevents indexing past the end.
             index = len(self.path) - 2
 
         x1, y1 = self.path[index]
@@ -189,16 +219,19 @@ class StanleyController(Node):
         Signed cross-track error:
         positive if robot is to the left of the path direction,
         negative if robot is to the right of the path direction.
+        Stanley does not just need “distance from path”; it needs to know which direction to steer.
         """
         if index >= len(self.path) - 1:
             index = len(self.path) - 2
 
+        # This creates the vector from path point to robot.
         path_x, path_y = self.path[index]
         path_yaw = self.get_path_heading(index)
 
         dx = self.x - path_x
         dy = self.y - path_y
 
+        # This rotates the robot-position error into the path frame.
         y_path = -math.sin(path_yaw) * dx + math.cos(path_yaw) * dy
 
         return y_path
@@ -277,15 +310,19 @@ class StanleyController(Node):
         self.closest_marker_pub.publish(marker)
 
     def control_loop(self):
+        # Continuously publishes the path marker.
         self.publish_path_marker()
 
+        # Waits until both odometry and path are ready.
         if not self.odom_received or not self.path_received:
             return
 
+        # If path is complete, keep publishing stop messages.
         if self.finished:
             self.publish_stop()
             return
 
+        # Stops if the robot is near the final path point and has progressed to the end of the path.
         final_goal = self.path[-1]
         final_distance = self.distance((self.x, self.y), final_goal)
 
@@ -294,39 +331,52 @@ class StanleyController(Node):
             self.publish_stop()
             self.get_logger().info("Stanley path complete.")
             return
-
+        
+        # Finds and visualizes the closest path point.
         closest_index, cross_track_abs = self.find_closest_index()
         closest_point = self.path[closest_index]
         self.publish_closest_marker(closest_point)
 
+        # These are the two core Stanley errors:
+        # heading_error: How much the robot heading differs from path heading.
+        # cross_track_error: How far left/right the robot is from the path.
         path_heading = self.get_path_heading(closest_index)
         heading_error = self.normalize_angle(path_heading - self.yaw)
         cross_track_error = self.compute_signed_cross_track_error(closest_index)
 
+        # Regulates the speed near the final goal.
         speed = self.max_linear_speed
         if final_distance < self.slowdown_distance:
             speed = self.goal_linear_speed
-
+        
+        # This is the Stanley cross-track correction. The denominator uses speed.
+        # At low speed, the same cross-track error should produce stronger steering correction.
+        # At higher speed, correction is smoother.
+        # The + 0.05 prevents division by zero or extremely large corrections when speed is near zero.
         cte_term = math.atan2(
             self.k_cross_track * cross_track_error,
             speed + 0.05
         )
 
+        # It combines: heading alignment + lateral path correction, limits it to ±1.0 rad/s.
         angular_cmd = self.k_heading * heading_error + cte_term
 
         cmd = Twist()
+        # Sets forward speed.
         cmd.linear.x = self.clamp(
             speed,
             self.min_linear_speed,
             self.max_linear_speed
         )
 
+        # Sets forward speed.
         cmd.angular.z = self.clamp(
             angular_cmd,
             -self.max_angular_speed,
             self.max_angular_speed
         )
 
+        # Publishes cmd with linear and angular speed.
         self.cmd_pub.publish(cmd)
 
         self.log_data(
@@ -354,7 +404,7 @@ class StanleyController(Node):
 
 
 def main(args=None):
-    rclpy.init(args=args)
+    rclpy.init(args=args) # Starts the node.
     node = StanleyController()
 
     try:
@@ -362,8 +412,10 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
 
+    # Publish stop messages on shutdown.
     node.publish_stop()
 
+    # Close the csv file
     if hasattr(node, "log_file"):
         node.log_file.close()
 

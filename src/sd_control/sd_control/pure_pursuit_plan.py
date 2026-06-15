@@ -54,16 +54,16 @@ class PurePursuitPlanFollower(Node):
         self.finished = False # Becomes true after goal is reached.
         
         # CSV logging
-        self.log_dir = os.path.expanduser("~/self_drive_ws/logs/controller_logs")
+        self.log_dir = os.path.expanduser("~/self_drive_ws/logs/controller_logs") # Creates a log directory if it does not exist
         os.makedirs(self.log_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S")
-        self.log_path = os.path.join(
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H%M%S") # Creates a time stamped log file name
+        self.log_path = os.path.join( 
             self.log_dir,
             f"pure_pursuit_log_{timestamp}.csv"
         )
-        self.log_file = open(self.log_path, "w", newline="")
-        self.csv_writer = csv.writer(self.log_file)
-        self.csv_writer.writerow([
+        self.log_file = open(self.log_path, "w", newline="") # Opens the CSV file for writing 
+        self.csv_writer = csv.writer(self.log_file) 
+        self.csv_writer.writerow([ # Writes the header row
             "time_sec",
             "controller",
             "x",
@@ -78,14 +78,14 @@ class PurePursuitPlanFollower(Node):
             "cmd_angular_z"
         ])
         self.get_logger().info(f"Logging Pure Pursuit data to: {self.log_path}")
-
+        # Subscribes to odometry 
         self.odom_sub = self.create_subscription(
             Odometry,
             "/odom",
             self.odom_callback,
             10
         )
-
+        # Subscribes to the nav2 path generated and published by nav2_plan_client.py
         self.path_sub = self.create_subscription(
             Path,
             "/planned_path",
@@ -93,29 +93,33 @@ class PurePursuitPlanFollower(Node):
             10
         )
 
+        # Publishes velocity commands to the robot
         self.cmd_pub = self.create_publisher(
             Twist,
             "/cmd_vel",
             10
         )
 
+        # Publishes the planned path as an Rviz marker
         self.path_marker_pub = self.create_publisher(
             Marker,
             "/pp_plan_path",
             10
         )
 
+        # Publishes the current lookahead point as an RViz marker.
         self.lookahead_marker_pub = self.create_publisher(
             Marker,
             "/pp_plan_lookahead",
             10
         )
-
+        # Runs control at 20 Hz 
         self.timer = self.create_timer(0.05, self.control_loop)
+        # Print Statements
         self.get_logger().info("Pure Pursuit /plan follower started.")
         self.get_logger().info("Waiting for /planned_path and /odom...")
 
-
+    # Writes one row of controller data to the CSV file.    
     def log_data(
         self,
         lookahead_point,
@@ -124,6 +128,7 @@ class PurePursuitPlanFollower(Node):
         curvature,
         cmd
     ):
+        # Gets ROS time in seconds
         time_sec = self.get_clock().now().nanoseconds / 1e9
 
         self.csv_writer.writerow([
@@ -140,10 +145,11 @@ class PurePursuitPlanFollower(Node):
             f"{cmd.linear.x:.4f}",
             f"{cmd.angular.z:.4f}"
         ])
-
+        # Forces data to be written to disk every control cycle.
         self.log_file.flush()
 
     def odom_callback(self, msg):
+        # This function reads robot position and converts quaternion to yaw.
         self.x = msg.pose.pose.position.x
         self.y = msg.pose.pose.position.y
 
@@ -153,29 +159,38 @@ class PurePursuitPlanFollower(Node):
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self.yaw = math.atan2(siny_cosp, cosy_cosp)
 
+        # Marks odom as received or available.
         self.odom_received = True
 
     def path_callback(self, msg):
+        # If an empty path arrives, ignore it. 
         if len(msg.poses) == 0:
             return
 
+        # Clears the previous path.
         self.path = []
 
+        # Converts nav_msgs/Path into a Python list (x,y) tuples.
         for pose_stamped in msg.poses:
             x = pose_stamped.pose.position.x
             y = pose_stamped.pose.position.y
             self.path.append((x, y))
 
+        # Restarts path tracking from the beginning.
         self.closest_index = 0
+        # Marks the path as received.
         self.path_received = True
+        # Clears the finished flag.
         self.finished = False
-
-        self.get_logger().info(f"Received new /plan with {len(self.path)} points.")
+        
+        self.get_logger().info(f"Received new /planned_path with {len(self.path)} points.")
 
     def clamp(self, value, min_value, max_value):
+        # Clamps the value between a minium and maximum.
         return max(min(value, max_value), min_value)
 
     def distance(self, p1, p2):
+        # Computes Euclidean distance between 2 points. 
         dx = p1[0] - p2[0]
         dy = p1[1] - p2[1]
         return math.sqrt(dx * dx + dy * dy)
@@ -196,6 +211,7 @@ class PurePursuitPlanFollower(Node):
         return min_dist
 
     def find_closest_index(self):
+        # Searches forward from the current closest index and finds the nearest path point.
         robot_pos = (self.x, self.y)
 
         best_index = self.closest_index
@@ -211,6 +227,7 @@ class PurePursuitPlanFollower(Node):
         return best_index
 
     def find_lookahead_point(self):
+        # Finds the first path point ahead whose distance from the robot is at least the lookahead distance.
         robot_pos = (self.x, self.y)
         closest = self.find_closest_index()
 
@@ -222,6 +239,7 @@ class PurePursuitPlanFollower(Node):
         return self.path[-1], len(self.path) - 1
 
     def transform_to_robot_frame(self, point):
+        # Transforms the lookahead point from map/world coordinates into the robot coordinate frame.
         dx = point[0] - self.x
         dy = point[1] - self.y
 
