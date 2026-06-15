@@ -1,8 +1,8 @@
-<?xml version="1.0"?> # Indicates the XML format
+<?xml version="1.0"?> 
 
 <!-- Starts the robot definition
-# Defines the name
-# xmlns:xacro="http://www.ros.org/wiki/xacro" Enables the Xacro syntax, without this the file would be plain URDF -->
+Defines the name
+xmlns:xacro="http://www.ros.org/wiki/xacro" Enables the Xacro syntax, without this the file would be plain URDF -->
 <robot name="simple_sd_robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <!-- ========================= -->
@@ -32,6 +32,7 @@
   <link name="base_footprint"/> <!-- Base_footprint is a reference frame, represents robots position projected onto the ground. -->
 
   <joint name="base_footprint_joint" type="fixed"> <!-- Fixed joint means the child link does not move relative to the parent link. -->
+    <parent link="base_footprint"/>
     <child link="base_link"/> <!-- base_footprint is the parent link, base_link is the child link. -->
     <origin xyz="0 0 0.10" rpy="0 0 0"/> <!-- base_link is 0.10 m above the parent link (base_footprint). -->
   </joint>
@@ -272,7 +273,7 @@
       <publish_odom_tf>true</publish_odom_tf> <!--Plugin publishes the TF transform  -->
       <publish_wheel_tf>true</publish_wheel_tf><!-- Plugin publishes wheel transforms -->
 
-      <update_rate>50</update_rate> # Updates at a rate of 50 Hz (50 times a second).
+      <update_rate>50</update_rate> <!-- Updates at a rate of 50 Hz (50 times a second). -->
     </plugin>
   </gazebo>
 

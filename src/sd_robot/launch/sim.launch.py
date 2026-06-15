@@ -22,6 +22,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 # Get_package_share_directory finds the installed share directory for a ROS 2 package.
 from ament_index_python.packages import get_package_share_directory
+from launch_ros.parameter_descriptions import ParameterValue
 
 # The generate_launch_description is mandatory in any python launch file, ROS2 executes what the function returns, is the main PoE to the launch file.
 def generate_launch_description():
@@ -75,11 +76,14 @@ def generate_launch_description():
     )
 # Run xacro on simple_robot.urdf.xacro, and store the resulting URDF XML string inside the parameter called robot_description (ROS tools expect the robot model to be available under this parameter name:).
     robot_description = {
-        "robot_description": Command([
+    "robot_description": ParameterValue(
+        Command([
             "xacro ",
             robot_description_path
-        ])
-    }
+        ]),
+        value_type=str
+    )
+}
 
 ## Starts the Robot publisher node that takes the URDF as a paramenter 
 ## Robot state publisher reads your robot URDF and publishes TF (transforms) between robot links.
