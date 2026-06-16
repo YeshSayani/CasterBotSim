@@ -31,6 +31,14 @@ import numpy as np
 import rclpy
 from rclpy.node import Node
 
+from tf2_ros import (
+    Buffer,
+    TransformListener,
+    LookupException,
+    ConnectivityException,
+    ExtrapolationException,
+)
+
 from nav_msgs.msg import Odometry, Path
 from geometry_msgs.msg import Twist
 from visualization_msgs.msg import Marker
@@ -49,53 +57,28 @@ class LQRController(Node):
 
         super().__init__("lqr_controller")
 
-        # ============================================================
         # Path storage
-        # ============================================================
         # self.path will store the planned path as a list of (x, y) tuples.
-        # Example:
-        #   [(0.0, 0.0), (0.1, 0.0), (0.2, 0.05), ...]
-        #
         # self.closest_index remembers where we are on the path.
         # We search forward from this index so the controller does not
         # jump backward to earlier path points.
         self.path = []
         self.closest_index = 0
 
-        # ============================================================
         # Control loop timing
-        # ============================================================
-        # The controller runs every dt seconds.
-        #
-        # dt = 0.05 means:
-        #   1 / 0.05 = 20 Hz
-        #
+        # The controller runs at 20 Hz
         # This matches a reasonable controller frequency for this robot.
         self.dt = 0.05
 
-        # ============================================================
         # Speed limits
-        # ============================================================
-        # max_linear_speed:
-        #   normal cruising speed
-        #
-        # min_linear_speed:
-        #   minimum speed while moving; prevents the robot from crawling
-        #   too slowly unless stopped
-        #
-        # goal_linear_speed:
-        #   slower speed near the final goal
-        #
-        # max_angular_speed:
-        #   angular velocity saturation limit
         self.max_linear_speed = 0.22
         self.min_linear_speed = 0.08
         self.goal_linear_speed = 0.10
         self.max_angular_speed = 1.0
 
-        # ============================================================
+        #
         # Goal behavior
-        # ============================================================
+        #
         # goal_tolerance:
         #   if robot is within this distance of final path point,
         #   it stops
@@ -105,9 +88,9 @@ class LQRController(Node):
         self.goal_tolerance = 0.15
         self.slowdown_distance = 0.60
 
-        # ============================================================
+        #
         # LQR weights
-        # ============================================================
+        #
         # LQR minimizes a cost function:
         #
         #   cost = sum(x.T Q x + u.T R u)
@@ -131,22 +114,30 @@ class LQRController(Node):
         self.Q = np.diag([4.0, 2.0])
         self.R = np.array([[0.8]])
 
-        # ============================================================
+        #
         # Robot state from odometry
-        # ============================================================
+        #
         # These are updated every time we receive /odom.
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
+
+        # Frame setup.
+        # /planned_path is in map frame, so robot pose must also be in map frame.
+        self.path_frame = "map"
+        self.robot_frame = "base_footprint"
+
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # Flags to make sure the controller does not run before it has data.
         self.odom_received = False
         self.path_received = False
         self.finished = False
 
-        # ============================================================
+        #
         # CSV logging setup
-        # ============================================================
+        #
         # Logs are saved here:
         #
         #   ~/self_drive_ws/logs/controller_logs/
@@ -187,16 +178,7 @@ class LQRController(Node):
 
         self.get_logger().info(f"Logging LQR data to: {self.log_path}")
 
-        # ============================================================
-        # Subscribers
-        # ============================================================
-
         # /odom gives the robot's current pose and orientation.
-        #
-        # We use:
-        #   position.x
-        #   position.y
-        #   orientation quaternion -> yaw
         self.odom_sub = self.create_subscription(
             Odometry,
             "/odom",
@@ -221,9 +203,9 @@ class LQRController(Node):
             10
         )
 
-        # ============================================================
+        #
         # Publisher
-        # ============================================================
+        #
         # /cmd_vel is what Gazebo's diff_drive_controller listens to.
         #
         # We publish:
@@ -235,9 +217,9 @@ class LQRController(Node):
             10
         )
 
-        # ============================================================
+        #
         # RViz visualization publishers
-        # ============================================================
+        #
         # These make debugging easier.
         #
         # /lqr_path:
@@ -257,18 +239,18 @@ class LQRController(Node):
             10
         )
 
-        # ============================================================
+        #
         # Timer
-        # ============================================================
+        #
         # Runs control_loop() every self.dt seconds.
         self.timer = self.create_timer(self.dt, self.control_loop)
 
         self.get_logger().info("LQR controller started.")
         self.get_logger().info("Waiting for /planned_path and /odom...")
 
-    # ================================================================
+    #
     # Odometry callback
-    # ================================================================
+    #
 
     def odom_callback(self, msg):
         """
@@ -283,25 +265,56 @@ class LQRController(Node):
         Since this is a 2D ground robot, we only need yaw.
         """
 
-        self.x = msg.pose.pose.position.x
-        self.y = msg.pose.pose.position.y
+        # self.x = msg.pose.pose.position.x
+        # self.y = msg.pose.pose.position.y
 
-        q = msg.pose.pose.orientation
+        # q = msg.pose.pose.orientation
 
         # Quaternion to yaw conversion:
         #
         # yaw = atan2(2(wz + xy), 1 - 2(y^2 + z^2))
         #
         # This avoids needing tf_transformations.
+        # siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
+        # cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
+        # self.yaw = math.atan2(siny_cosp, cosy_cosp)
+
+        self.odom_received = True
+    
+    def update_robot_pose_from_tf(self):
+        """
+        Update robot pose using TF.
+
+        This gets the pose of base_footprint expressed in map frame,
+        so it matches the frame used by /planned_path.
+        """
+
+        try:
+            transform = self.tf_buffer.lookup_transform(
+                self.path_frame,      # target frame: map
+                self.robot_frame,     # source frame: base_footprint
+                rclpy.time.Time()
+            )
+        except (LookupException, ConnectivityException, ExtrapolationException) as ex:
+            self.get_logger().warn(
+                f"Could not get transform {self.path_frame} -> {self.robot_frame}: {ex}",
+                throttle_duration_sec=1.0
+            )
+            return False
+
+        t = transform.transform.translation
+        q = transform.transform.rotation
+
+        self.x = t.x
+        self.y = t.y
+
         siny_cosp = 2.0 * (q.w * q.z + q.x * q.y)
         cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z)
         self.yaw = math.atan2(siny_cosp, cosy_cosp)
 
-        self.odom_received = True
+        return True
 
-    # ================================================================
     # Path callback
-    # ================================================================
 
     def path_callback(self, msg):
         """
@@ -330,9 +343,7 @@ class LQRController(Node):
 
         self.get_logger().info(f"Received new /planned_path with {len(self.path)} points.")
 
-    # ================================================================
     # Utility functions
-    # ================================================================
 
     def normalize_angle(self, angle):
         """
@@ -374,9 +385,7 @@ class LQRController(Node):
 
         self.cmd_pub.publish(Twist())
 
-    # ================================================================
     # Path geometry functions
-    # ================================================================
 
     def find_closest_index(self):
         """
@@ -454,9 +463,9 @@ class LQRController(Node):
 
         return y_path
 
-    # ================================================================
+    #
     # LQR functions
-    # ================================================================
+    #
 
     def solve_discrete_lqr(self, A, B, Q, R):
         """
@@ -544,9 +553,9 @@ class LQRController(Node):
 
         return K
 
-    # ================================================================
+    #
     # RViz marker functions
-    # ================================================================
+    #
 
     def publish_path_marker(self):
         """
@@ -609,9 +618,9 @@ class LQRController(Node):
 
         self.closest_marker_pub.publish(marker)
 
-    # ================================================================
+    #
     # CSV logging
-    # ================================================================
+    #
 
     def log_data(
         self,
@@ -653,9 +662,9 @@ class LQRController(Node):
         # Flush every row so data is saved even if the node is stopped.
         self.log_file.flush()
 
-    # ================================================================
+    #
     # Main control loop
-    # ================================================================
+    #
 
     def control_loop(self):
         """
@@ -677,7 +686,13 @@ class LQRController(Node):
         self.publish_path_marker()
 
         # Do nothing until both odometry and path are available.
-        if not self.odom_received or not self.path_received:
+        # if not self.odom_received or not self.path_received:
+        #     return
+
+        if not self.path_received:
+            return
+        
+        if not self.update_robot_pose_from_tf():
             return
 
         # If controller has completed the path, keep robot stopped.
